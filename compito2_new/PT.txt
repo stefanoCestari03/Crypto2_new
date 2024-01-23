@@ -1,0 +1,1 @@
+Questo è un testo di esempio da cifrare. Puoi sostituire questo testo con i tuoi dati sensibili quando utilizzi algoritmi di cifratura come 3DES o AES. La sicurezza delle informazioni è fondamentale, e la crittografia è uno strumento importante per proteggere la privacy e garantire la riservatezza dei dati.
