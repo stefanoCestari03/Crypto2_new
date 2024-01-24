@@ -8,6 +8,7 @@ from Crypto.Random import get_random_bytes
 # exaple of graphic
 import tkinter as tk
 from tkinter import filedialog
+from tkinter import ttk
 
 
 # import of other modules 
@@ -38,64 +39,61 @@ def unpad(data):
     return data[:length]
 
 # key generating 
+def unpad(data):
+    length = 16 * ((len(data) + 15) // 16)
+    return data[:length]
+
 def generate_key(key_file):
     try:
-        key =get_random_bytes(16)
+        key = get_random_bytes(32)
         with open(key_file, 'wb') as file:
-                file.write(key)
+            file.write(key)
     except KeyGenerationError as err:
         print(err)
-        
     return key
-# encrypt func
-def encrypt_file(in_file,out_file,key):
+
+def generate_iv():
+    return get_random_bytes(16)
+
+def encrypt_file(in_file, out_file, key, iv):
     try:
-        # iv = get_random_bytes(8)
-        #cipher = DES3.new(key, DES3.MODE_CBC, iv)
-        cipher = DES3.new(key, DES3.MODE_CBC)
+        cipher = AES.new(key, AES.MODE_CBC, iv)
         try:
             with open(in_file, 'rb') as file:
-                #iv = file.read(8)
                 plain_text = file.read()
         except ReadingFileError as err:
             err += " in encrypting situation"
             print(err)
-        # padding data
-        padded_text = pad(plain_text, 8)
+        padded_text = pad(plain_text, 16)
         cipher_text = cipher.encrypt(padded_text)
         try:
             with open(out_file + '.enc', 'wb') as file:
-                # file.write(iv + cipher_text)
-                file.write(cipher_text)
+                file.write(iv + cipher_text)
         except WritingFileError as err:
             err += " in encrypting situation"
             print(err)
     except EncryptingError as err:
         print(err)
 
-def decrypt_file(in_file,out_file,key):
+def decrypt_file(in_file, out_file, key):
     try:
         try:
             with open(in_file, 'rb') as file:
-                iv = file.read(8)
+                iv = file.read(16)
                 text_to_decrypt = file.read()
-            cipher = DES3.new(key, DES3.MODE_CBC, iv)
+            cipher = AES.new(key, AES.MODE_CBC, iv)
         except ReadingFileError as err:
             err += " in encrypting situation"
             print(err)
-        # padding data
-        
         cipher_text = cipher.decrypt(text_to_decrypt)
-        # unpadding text at least 
         plain_text = unpad(cipher_text)
         try:
             with open(out_file + '.dec', 'wb') as file:
-                # file.write(iv + plain_text)
                 file.write(plain_text)
         except WritingFileError as err:
             err += " in encrypting situation"
             print(err)
-    except EncryptingError as err:
+    except DecryptingError as err:
         print(err)
 # main
 
@@ -144,29 +142,40 @@ class CryptoApp:
         
 
     def create_widgets(self):
-        self.label = tk.Label(self.master, text="Welcome to Crypto Lab")
+        # self.label = tk.Label(self.master, text="Welcome to Crypto Lab")
+        # self.label.pack(pady=10)
+
+        # self.encrypt_button = tk.Button(self.master, text="Encrypt ", command=self.encrypt)
+        # self.encrypt_button.pack()
+
+        # self.decrypt_button = tk.Button(self.master, text="Decrypt ", command=self.decrypt)
+        # self.decrypt_button.pack()
+        style = ttk.Style()
+        style.configure('TButton', padding=5, font=('Helvetica', 12))
+
+        self.label = tk.Label(self.master, text="Welcome to Crypto lab chose what to do:", font=('Helvetica', 16))
         self.label.pack(pady=10)
 
-        self.encrypt_button = tk.Button(self.master, text="Encrypt 3DES", command=self.encrypt)
-        self.encrypt_button.pack()
+        self.encrypt_button = ttk.Button(self.master, text="Encrypt", command=self.encrypt)
+        self.encrypt_button.pack(pady=10)
 
-        self.decrypt_button = tk.Button(self.master, text="Decrypt 3DES", command=self.decrypt)
+        self.decrypt_button = ttk.Button(self.master, text="Decrypt", command=self.decrypt)
         self.decrypt_button.pack()
 
     def encrypt(self):
-        in_file = filedialog.askopenfilename(title="Select file to encrypt")
-        out_file = filedialog.asksaveasfilename(title="Select output file")
-        key_file = filedialog.askopenfilename(title="Select key file")
+        in_file = filedialog.askopenfilename(title="SELECT FILE TO ENCRYPT")
+        out_file = filedialog.asksaveasfilename(title="TYPE THE NAME OF THE (enc) FILE AND CLICK SAVE")
+        key_file = filedialog.askopenfilename(title="SELECT FILE WERE WE ARE GOING TO GENERATE KEY (key.txt)")
         self.key = generate_key(key_file)
-        encrypt_file(in_file, out_file, self.key)
+        encrypt_file(in_file, out_file, self.key, generate_iv())
 
     def decrypt(self):
         if not self.key:
             print("Please encrypt a file first to obtain the key.")
             return
 
-        in_file = filedialog.askopenfilename(title="Select file to decrypt")
-        out_file = filedialog.asksaveasfilename(title="Select output file")
+        in_file = filedialog.askopenfilename(title="SELECT FILE TO DECRYPT")
+        out_file = filedialog.asksaveasfilename(title="TYPE THE NAME OF THE (dec) FILE AND CLICK SAVE")
         decrypt_file(in_file, out_file, self.key)
 
 
