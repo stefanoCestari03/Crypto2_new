@@ -55,19 +55,29 @@ def generate_key(key_file):
 def generate_iv():
     return get_random_bytes(16)
 
-def encrypt_file(in_file, out_file, key, iv):
+def encrypt_file(in_file, out_file, key, iv, authenticate):
     try:
-        cipher = AES.new(key, AES.MODE_CBC, iv)
+        if authenticate:
+            cipher = AES.new(key, AES.MODE_GCM, iv)
+        else: 
+            cipher = AES.new(key, AES.MODE_CBC, iv)
         try:
             with open(in_file, 'rb') as file:
                 plain_text = file.read()
         except ReadingFileError as err:
             err += " in encrypting situation"
             print(err)
-        padded_text = pad(plain_text, 16)
-        cipher_text = cipher.encrypt(padded_text)
+        cipher_text, auth_tag = cipher.encrypt_and_digest(plain_text)
+        if authenticate:
+            try:
+                cipher_text += auth_tag
+            except AutenticationError as err:
+                print(err)
         try:
-            with open(out_file + '.enc', 'wb') as file:
+            # text files tests
+            # with open(out_file + '.enc', 'wb') as file:
+            # immage test use extension of the file jpg
+            with open(out_file , 'wb') as file:
                 file.write(iv + cipher_text)
         except WritingFileError as err:
             err += " in encrypting situation"
@@ -75,29 +85,37 @@ def encrypt_file(in_file, out_file, key, iv):
     except EncryptingError as err:
         print(err)
 
-def decrypt_file(in_file, out_file, key):
+def decrypt_file(in_file, out_file, key, authenticate):
     try:
         try:
             with open(in_file, 'rb') as file:
                 iv = file.read(16)
                 text_to_decrypt = file.read()
-            cipher = AES.new(key, AES.MODE_CBC, iv)
+            cipher = AES.new(key, AES.MODE_GCM, iv)
         except ReadingFileError as err:
             err += " in encrypting situation"
             print(err)
-        cipher_text = cipher.decrypt(text_to_decrypt)
+        if authenticate:
+            auth_tag = text_to_decrypt[-16:]
+            text_to_decrypt = text_to_decrypt[:-16]
+        cipher_text = cipher.decrypt_and_verify(text_to_decrypt, auth_tag)
         plain_text = unpad(cipher_text)
         try:
-            with open(out_file + '.dec', 'wb') as file:
+            # text tests
+            # with open(out_file + '.dec', 'wb') as file:
+            # immage test use extension of the file jpg
+            with open(out_file , 'wb') as file:
                 file.write(plain_text)
         except WritingFileError as err:
             err += " in encrypting situation"
             print(err)
     except DecryptingError as err:
         print(err)
+    except AutenticationError as err:
+        print(err)
 # main
 
-
+# terminal main
 # def main():
 #     prompt = '''Welcome to  Crypto lab chose a way to Chiper:\n
 #     1. Encrypt 3DES\n
@@ -128,7 +146,7 @@ def decrypt_file(in_file, out_file, key):
 
 
 
-
+# GUI execution of the exercise
 class CryptoApp:
     def __init__(self, master):
         self.master = master
@@ -137,7 +155,9 @@ class CryptoApp:
         self.master.geometry("600x400")
         
         self.key = ""
-
+        
+        self.authenticate = False
+        
         self.create_widgets()
         
 
@@ -161,13 +181,16 @@ class CryptoApp:
 
         self.decrypt_button = ttk.Button(self.master, text="Decrypt", command=self.decrypt)
         self.decrypt_button.pack()
+        
+        self.authenticate_checkbox = ttk.Checkbutton(self.master, text="Authenticate encryption", command=self.toggle_authenticate(), variable=self.authenticate)
+        self.authenticate_checkbox.pack(pady=10)
 
     def encrypt(self):
         in_file = filedialog.askopenfilename(title="SELECT FILE TO ENCRYPT")
         out_file = filedialog.asksaveasfilename(title="TYPE THE NAME OF THE (enc) FILE AND CLICK SAVE")
         key_file = filedialog.askopenfilename(title="SELECT FILE WERE WE ARE GOING TO GENERATE KEY (key.txt)")
         self.key = generate_key(key_file)
-        encrypt_file(in_file, out_file, self.key, generate_iv())
+        encrypt_file(in_file, out_file, self.key, generate_iv(), self.authenticate)
 
     def decrypt(self):
         if not self.key:
@@ -176,7 +199,10 @@ class CryptoApp:
 
         in_file = filedialog.askopenfilename(title="SELECT FILE TO DECRYPT")
         out_file = filedialog.asksaveasfilename(title="TYPE THE NAME OF THE (dec) FILE AND CLICK SAVE")
-        decrypt_file(in_file, out_file, self.key)
+        decrypt_file(in_file, out_file, self.key, self.authenticate)
+        
+    def toggle_authenticate(self):
+        self.authenticate = not self.authenticate
 
 
 if __name__ == "__main__":
